@@ -1,0 +1,22 @@
+{
+  "url": "WebRoot/index.html",
+  "port": 8080,
+  "title": "Custom Browser Qt",
+  "icon_path": "Assets/default.svg",
+  "enable_minimize": true,
+  "enable_maximize": true,
+  "enable_close": true,
+  "enable_move_window": true,
+  "enable_kiosk_mode_toggle": true,
+  "start_window_size": "1280x720",
+  "start_in_kiosk": false,
+  "password": "",
+  "dev_tools": false,
+  "extensions_enabled": false,
+  "show_addressbar": false,
+  "allow_tabs": false,
+  "title_bar_height_px": 32,
+  "title_bar_button_height_px": 24,
+  "title_bar_button_width_ratio": 1.25,
+  "title_bar_button_gap_px": 0
+}

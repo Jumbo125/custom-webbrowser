@@ -1,0 +1,144 @@
+<Window x:Class="CustomBrowser.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Custom Browser"
+        Width="1100"
+        Height="720"
+        MinWidth="360"
+        MinHeight="240"
+        WindowStyle="None"
+        ResizeMode="CanResizeWithGrip"
+        Background="#111827"
+        Loaded="Window_Loaded">
+    <Window.Resources>
+        <ControlTemplate x:Key="BrowserOnlyTabControlTemplate" TargetType="{x:Type TabControl}">
+            <Border Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}">
+                <ContentPresenter ContentSource="SelectedContent" />
+            </Border>
+        </ControlTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition x:Name="TitleBarRow" Height="36" />
+            <RowDefinition x:Name="AddressBarRow" Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border x:Name="TitleBar"
+                Grid.Row="0"
+                Background="#111827"
+                MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Image x:Name="WindowIcon"
+                       Width="18"
+                       Height="18"
+                       Margin="10,0,8,0"
+                       VerticalAlignment="Center" />
+
+                <TextBlock x:Name="WindowTitle"
+                           Grid.Column="1"
+                           VerticalAlignment="Center"
+                           Foreground="White"
+                           FontSize="13"
+                           TextTrimming="CharacterEllipsis" />
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button x:Name="KioskToggleButton"
+                            Width="46"
+                            Height="36"
+                            Content="⛶"
+                            ToolTip="Kiosk-Modus umschalten"
+                            Click="KioskToggleButton_Click" />
+                    <Button x:Name="MinimizeButton"
+                            Width="46"
+                            Height="36"
+                            Content="—"
+                            ToolTip="Minimieren"
+                            Click="MinimizeButton_Click" />
+                    <Button x:Name="MaximizeButton"
+                            Width="46"
+                            Height="36"
+                            Content="□"
+                            ToolTip="Maximieren / Wiederherstellen"
+                            Click="MaximizeButton_Click" />
+                    <Button x:Name="CloseButton"
+                            Width="46"
+                            Height="36"
+                            Content="×"
+                            ToolTip="Schließen"
+                            Click="CloseButton_Click" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border x:Name="AddressBarContainer"
+                Grid.Row="1"
+                Background="#1f2937"
+                Padding="6,4">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Button x:Name="BackButton"
+                        Grid.Column="0"
+                        Width="30"
+                        Height="24"
+                        Content="‹"
+                        ToolTip="Zurück"
+                        Click="BackButton_Click" />
+                <Button x:Name="ForwardButton"
+                        Grid.Column="1"
+                        Width="30"
+                        Height="24"
+                        Margin="4,0,0,0"
+                        Content="›"
+                        ToolTip="Vorwärts"
+                        Click="ForwardButton_Click" />
+                <Button x:Name="ReloadButton"
+                        Grid.Column="2"
+                        Width="30"
+                        Height="24"
+                        Margin="4,0,8,0"
+                        Content="⟳"
+                        ToolTip="Neu laden"
+                        Click="ReloadButton_Click" />
+
+                <TextBox x:Name="AddressTextBox"
+                         Grid.Column="3"
+                         Height="24"
+                         VerticalContentAlignment="Center"
+                         Padding="6,0"
+                         KeyDown="AddressTextBox_KeyDown" />
+
+                <Button x:Name="GoButton"
+                        Grid.Column="4"
+                        Width="48"
+                        Height="24"
+                        Margin="6,0,0,0"
+                        Content="Go"
+                        ToolTip="URL öffnen"
+                        Click="GoButton_Click" />
+            </Grid>
+        </Border>
+
+        <TabControl x:Name="BrowserTabs"
+                    Grid.Row="2"
+                    Background="#111827"
+                    BorderThickness="0"
+                    SelectionChanged="BrowserTabs_SelectionChanged" />
+    </Grid>
+</Window>

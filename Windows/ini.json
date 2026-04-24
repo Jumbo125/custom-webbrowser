@@ -1,0 +1,22 @@
+{
+  "url": "WebRoot/index.html",
+  "port": 8765,
+  "title_name": "Custom Browser",
+  "icon_path": "Assets/default.ico",
+  "enable_minimize": true,
+  "enable_maximize": true,
+  "enable_close": true,
+  "enable_move_window": true,
+  "enable_kiosk_mode_toggle": true,
+  "start_window_size": "1100,720",
+  "start_in_kiosk": false,
+  "control_password": "",
+  "dev_tools": true,
+  "extensions_enabled": false,
+  "title_bar_height_px": 32,
+  "title_bar_button_height_px": 24,
+  "title_bar_button_width_ratio": 1.25,
+  "title_bar_button_gap_px": 0,
+  "show_addressbar": false,
+  "allow_tabs": false
+}
