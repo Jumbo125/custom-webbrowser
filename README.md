@@ -20,6 +20,20 @@
 
 ---
 
+<p align="center">
+  <img src="images/logo.svg" alt="custom-web-shell logo" width="96">
+</p>
+
+## Screenshots
+
+| Normal window | Maximized window |
+| --- | --- |
+| <img src="images/custom_browser.JPG" alt="Custom Browser normal window" width="420"> | <img src="images/custom_browser_maximiert.JPG" alt="Custom Browser maximized window" width="420"> |
+
+| Maximized with allowed tabs | Settings |
+| --- | --- |
+| <img src="images/custom_browser_maximiert_Allow_tabs.JPG" alt="Custom Browser maximized with allowed tabs" width="420"> | <img src="images/custom_browser_maximiert_settings.JPG" alt="Custom Browser settings" width="420"> |
+
 ## Deutsch
 
 `custom-web-shell` ist eine kleine, flexibel konfigurierbare Browser-Shell für Windows und Linux.
