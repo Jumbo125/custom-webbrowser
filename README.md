@@ -1,4 +1,4 @@
-# custom-web-shell
+# custom-webbrowser 
 
 <p align="center">
   <img alt="Project status" src="https://img.shields.io/badge/status-active-success">
