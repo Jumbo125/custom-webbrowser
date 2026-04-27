@@ -14,8 +14,10 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMouseEvent>
+#include <QMoveEvent>
 #include <QPushButton>
 #include <QShortcut>
+#include <QShowEvent>
 #include <QSize>
 #include <QStyle>
 #include <QTabBar>
@@ -691,6 +693,14 @@ void MainWindow::updateMaximizeButtonText()
 
 bool MainWindow::usesNativeTitleBar() const
 {
+    // A native Linux/Windows title bar is controlled by the window manager.
+    // Qt does not provide a portable way to disable dragging of that native title bar.
+    // Therefore, when movement is disabled, fall back to the frameless/custom bar
+    // and additionally lock the window position in moveEvent().
+    if (!m_settings.enableMoveWindow) {
+        return false;
+    }
+
     const QString style = m_settings.titlebarStyle.trimmed().toLower();
     return style == QStringLiteral("native") || style == QStringLiteral("system") || style == QStringLiteral("os");
 }
@@ -869,6 +879,34 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event)
     }
 
     return QMainWindow::eventFilter(watched, event);
+}
+
+void MainWindow::showEvent(QShowEvent* event)
+{
+    QMainWindow::showEvent(event);
+
+    if (!m_settings.enableMoveWindow && !m_windowMoveLockReady) {
+        m_lockedWindowPos = pos();
+        m_windowMoveLockReady = true;
+    }
+}
+
+void MainWindow::moveEvent(QMoveEvent* event)
+{
+    if (m_settings.enableMoveWindow || m_restoringLockedPosition || !m_windowMoveLockReady || m_isKiosk || isFullScreen()) {
+        QMainWindow::moveEvent(event);
+        return;
+    }
+
+    if (event->pos() != m_lockedWindowPos) {
+        m_restoringLockedPosition = true;
+        move(m_lockedWindowPos);
+        m_restoringLockedPosition = false;
+        event->accept();
+        return;
+    }
+
+    QMainWindow::moveEvent(event);
 }
 
 void MainWindow::closeEvent(QCloseEvent* event)

@@ -71,6 +71,7 @@ void CliOverrideParser::apply(BrowserSettings& s, const QStringList& arguments)
     if (has("enable_maximize")) s.enableMaximize = toBool(val("enable_maximize"), s.enableMaximize);
     if (has("enable_close")) s.enableClose = toBool(val("enable_close"), s.enableClose);
     if (has("enable_move_window")) s.enableMoveWindow = toBool(val("enable_move_window"), s.enableMoveWindow);
+    if (has("enable_movement")) s.enableMoveWindow = toBool(val("enable_movement"), s.enableMoveWindow);
     if (has("enable_kiosk_mode_toggle")) s.enableKioskModeToggle = toBool(val("enable_kiosk_mode_toggle"), s.enableKioskModeToggle);
 
     if (has("start_window_size")) s.startWindowSize = val("start_window_size");

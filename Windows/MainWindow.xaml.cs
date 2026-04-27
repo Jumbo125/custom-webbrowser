@@ -23,6 +23,10 @@ public partial class MainWindow : Window
     private const uint MfEnabled = 0x00000000;
     private const uint MfGrayed = 0x00000001;
     private const uint ScClose = 0xF060;
+    private const int WmNcLButtonDown = 0x00A1;
+    private const int WmSysCommand = 0x0112;
+    private const int HtCaption = 0x0002;
+    private const int ScMove = 0xF010;
 
     private readonly BrowserSettings _settings;
     private readonly string _configDirectory;
@@ -42,7 +46,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         _settings = settings;
         _configDirectory = configDirectory;
-        SourceInitialized += (_, _) => ApplyNativeWindowButtonStyle();
+        SourceInitialized += Window_SourceInitialized;
         ApplyWindowFrameStyle();
     }
 
@@ -482,6 +486,38 @@ public partial class MainWindow : Window
         }
     }
 
+    private void Window_SourceInitialized(object? sender, EventArgs e)
+    {
+        ApplyNativeWindowButtonStyle();
+
+        if (PresentationSource.FromVisual(this) is HwndSource source)
+        {
+            source.AddHook(WindowMessageHook);
+        }
+    }
+
+    private IntPtr WindowMessageHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (!_settings.EnableMoveWindow)
+        {
+            // Native title bars are controlled by Windows. This blocks dragging the
+            // native caption and also disables Alt+Space -> Move when movement is disabled.
+            if (msg == WmNcLButtonDown && wParam.ToInt32() == HtCaption)
+            {
+                handled = true;
+                return IntPtr.Zero;
+            }
+
+            if (msg == WmSysCommand && ((wParam.ToInt64() & 0xFFF0) == ScMove))
+            {
+                handled = true;
+                return IntPtr.Zero;
+            }
+        }
+
+        return IntPtr.Zero;
+    }
+
     private void ApplyNativeWindowButtonStyle()
     {
         if (!UseNativeTitlebar || !OperatingSystem.IsWindows())
@@ -504,6 +540,7 @@ public partial class MainWindow : Window
         if (systemMenu != IntPtr.Zero)
         {
             EnableMenuItem(systemMenu, ScClose, MfByCommand | (_settings.EnableClose ? MfEnabled : MfGrayed));
+            EnableMenuItem(systemMenu, ScMove, MfByCommand | (_settings.EnableMoveWindow ? MfEnabled : MfGrayed));
         }
 
         DrawMenuBar(hwnd);

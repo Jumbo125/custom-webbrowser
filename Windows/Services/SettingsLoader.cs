@@ -35,6 +35,8 @@ public static class SettingsLoader
         ["enable_close"] = "enable_close",
         ["close"] = "enable_close",
         ["enable_move_window"] = "enable_move_window",
+        ["enable_movement"] = "enable_move_window",
+        ["movement"] = "enable_move_window",
         ["move_window"] = "enable_move_window",
         ["move"] = "enable_move_window",
         ["enable_kiosk_mode_toggle"] = "enable_kiosk_mode_toggle",
@@ -165,7 +167,7 @@ public static class SettingsLoader
         settings.EnableMinimize = GetBool(root, settings.EnableMinimize, "enable_minimize", "minimize");
         settings.EnableMaximize = GetBool(root, settings.EnableMaximize, "enable_maximize", "enable_maximaze", "maximize", "maximaze");
         settings.EnableClose = GetBool(root, settings.EnableClose, "enable_close", "close");
-        settings.EnableMoveWindow = GetBool(root, settings.EnableMoveWindow, "enable_move_window", "move_window", "move");
+        settings.EnableMoveWindow = GetBool(root, settings.EnableMoveWindow, "enable_move_window", "enable_movement", "movement", "move_window", "move");
         settings.EnableKioskModeToggle = GetBool(root, settings.EnableKioskModeToggle, "enable_kiosk_mode_toggle", "kiosk_toggle", "toggle_kiosk");
         settings.StartWindowSize = GetString(root, settings.StartWindowSize, "start_window_size", "window_size");
         settings.StartInKiosk = GetBool(root, settings.StartInKiosk, "start_in_kiosk", "kiosk");

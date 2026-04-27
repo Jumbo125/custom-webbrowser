@@ -15,6 +15,8 @@ class QVBoxLayout;
 class QWebChannel;
 class QWebEngineView;
 class QCloseEvent;
+class QShowEvent;
+class QMoveEvent;
 class QWebEngineScript;
 class QTabWidget;
 class QLineEdit;
@@ -39,6 +41,8 @@ public:
 
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
+    void showEvent(QShowEvent* event) override;
+    void moveEvent(QMoveEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
 
 private:
@@ -114,6 +118,9 @@ private:
 
     bool m_dragging = false;
     QPoint m_dragOffset;
+    QPoint m_lockedWindowPos;
+    bool m_windowMoveLockReady = false;
+    bool m_restoringLockedPosition = false;
     bool m_isKiosk = false;
     bool m_wasMaximizedBeforeKiosk = false;
     bool m_forceClose = false;
