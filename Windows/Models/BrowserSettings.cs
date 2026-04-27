@@ -46,6 +46,15 @@ public sealed class BrowserSettings
     [JsonPropertyName("extensions_enabled")]
     public bool ExtensionsEnabled { get; set; } = false;
 
+    [JsonPropertyName("enable_autofill")]
+    public bool EnableAutofill { get; set; } = true;
+
+    [JsonPropertyName("enable_password_saving")]
+    public bool EnablePasswordSaving { get; set; } = false;
+
+    [JsonPropertyName("enable_translate")]
+    public bool EnableTranslate { get; set; } = true;
+
     [JsonPropertyName("title_bar_height_px")]
     public double TitleBarHeightPx { get; set; } = 32;
 

@@ -284,6 +284,16 @@ void MainWindow::configureWebView(QWebEngineView* view)
     channel->registerObject(QStringLiteral("customBrowserBridge"), m_bridge);
     view->page()->setWebChannel(channel);
 
+    if (!m_settings.enableAutofill || !m_settings.enablePasswordSaving) {
+        QWebEngineScript browserControlScript;
+        browserControlScript.setName(QStringLiteral("customBrowserFormControl"));
+        browserControlScript.setInjectionPoint(QWebEngineScript::DocumentCreation);
+        browserControlScript.setWorldId(QWebEngineScript::MainWorld);
+        browserControlScript.setRunsOnSubFrames(true);
+        browserControlScript.setSourceCode(browserControlScriptSource());
+        view->page()->scripts().insert(browserControlScript);
+    }
+
     QWebEngineScript script;
     script.setName(QStringLiteral("customBrowserBridgeInstaller"));
     script.setInjectionPoint(QWebEngineScript::DocumentReady);
@@ -716,6 +726,108 @@ void MainWindow::closeEvent(QCloseEvent* event)
     }
 
     event->accept();
+}
+
+QString MainWindow::browserControlScriptSource() const
+{
+    const QString disableAutofill = m_settings.enableAutofill ? QStringLiteral("false") : QStringLiteral("true");
+    const QString disablePasswordSaving = m_settings.enablePasswordSaving ? QStringLiteral("false") : QStringLiteral("true");
+
+    return QStringLiteral(R"JS(
+(function () {
+  var disableAutofill = %1;
+  var disablePasswordSaving = %2;
+
+  function isEditableField(element) {
+    if (!element || !element.tagName) return false;
+    var tag = element.tagName.toLowerCase();
+    if (tag === 'textarea' || tag === 'select') return true;
+    if (tag !== 'input') return false;
+
+    var type = (element.getAttribute('type') || 'text').toLowerCase();
+    return [
+      'text', 'search', 'email', 'tel', 'url', 'number',
+      'date', 'datetime-local', 'month', 'week', 'time'
+    ].indexOf(type) !== -1;
+  }
+
+  function isPasswordField(element) {
+    if (!element || !element.tagName || element.tagName.toLowerCase() !== 'input') return false;
+    var type = (element.getAttribute('type') || '').toLowerCase();
+    var hint = [
+      element.getAttribute('name') || '',
+      element.getAttribute('id') || '',
+      element.getAttribute('autocomplete') || ''
+    ].join(' ');
+    return type === 'password' || /pass(word)?|pwd|pin|otp|token/i.test(hint);
+  }
+
+  function lockAttribute(element, name, value) {
+    if (!element || !element.setAttribute) return;
+    if (element.getAttribute(name) !== value) {
+      element.setAttribute(name, value);
+    }
+  }
+
+  function applyToElement(element) {
+    if (!element || !element.setAttribute) return;
+
+    if (disableAutofill && isEditableField(element) && !isPasswordField(element)) {
+      lockAttribute(element, 'autocomplete', 'off');
+      lockAttribute(element, 'autocorrect', 'off');
+      lockAttribute(element, 'autocapitalize', 'off');
+      lockAttribute(element, 'spellcheck', 'false');
+      lockAttribute(element, 'data-custom-browser-autofill', 'disabled');
+    }
+
+    if (disablePasswordSaving && isPasswordField(element)) {
+      lockAttribute(element, 'autocomplete', 'new-password');
+      lockAttribute(element, 'data-custom-browser-password-saving', 'disabled');
+
+      if (element.form) {
+        lockAttribute(element.form, 'autocomplete', 'off');
+      }
+    }
+  }
+
+  function applyToRoot(root) {
+    if (!root || !root.querySelectorAll) return;
+
+    if (root.nodeType === 1) {
+      applyToElement(root);
+    }
+
+    root.querySelectorAll('input, textarea, select, form').forEach(function (element) {
+      applyToElement(element);
+    });
+  }
+
+  function installObserver() {
+    applyToRoot(document);
+
+    var observer = new MutationObserver(function (mutations) {
+      mutations.forEach(function (mutation) {
+        mutation.addedNodes.forEach(function (node) {
+          if (node.nodeType === 1) {
+            applyToRoot(node);
+          }
+        });
+      });
+    });
+
+    observer.observe(document.documentElement || document, {
+      childList: true,
+      subtree: true
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', installObserver, { once: true });
+  } else {
+    installObserver();
+  }
+})();
+)JS").arg(disableAutofill, disablePasswordSaving);
 }
 
 QString MainWindow::bridgeScriptSource() const

@@ -38,20 +38,65 @@ static QString findIniPath(int argc, char* argv[])
     return appIni;
 }
 
+static void appendChromiumFlag(QString& flags, const QString& flag)
+{
+    if (flags.contains(flag)) {
+        return;
+    }
+
+    if (!flags.trimmed().isEmpty()) {
+        flags += QLatin1Char(' ');
+    }
+
+    flags += flag;
+}
+
+static void appendDisabledChromiumFeatures(QString& flags, const QStringList& features)
+{
+    if (features.isEmpty()) {
+        return;
+    }
+
+    appendChromiumFlag(flags, QStringLiteral("--disable-features=") + features.join(QLatin1Char(',')));
+}
+
+static void appendUniqueFeature(QStringList& features, const QString& feature)
+{
+    if (!features.contains(feature)) {
+        features.append(feature);
+    }
+}
+
 static void applyChromiumFlags(const BrowserSettings& settings)
 {
     QString flags = QString::fromUtf8(qgetenv("QTWEBENGINE_CHROMIUM_FLAGS"));
+    QStringList disabledFeatures;
 
     if (settings.extensionsEnabled) {
-        if (!flags.contains(QStringLiteral("--enable-extensions"))) {
-            flags += QStringLiteral(" --enable-extensions");
-        }
+        appendChromiumFlag(flags, QStringLiteral("--enable-extensions"));
     } else {
-        if (!flags.contains(QStringLiteral("--disable-extensions"))) {
-            flags += QStringLiteral(" --disable-extensions");
-        }
+        appendChromiumFlag(flags, QStringLiteral("--disable-extensions"));
     }
 
+    if (!settings.enableAutofill) {
+        appendUniqueFeature(disabledFeatures, QStringLiteral("AutofillServerCommunication"));
+        appendUniqueFeature(disabledFeatures, QStringLiteral("AutofillAddressSavePrompt"));
+        appendUniqueFeature(disabledFeatures, QStringLiteral("AutofillEnableAccountWalletStorage"));
+    }
+
+    if (!settings.enablePasswordSaving) {
+        appendChromiumFlag(flags, QStringLiteral("--disable-save-password-bubble"));
+        appendUniqueFeature(disabledFeatures, QStringLiteral("PasswordManagerEnableAccountStorage"));
+        appendUniqueFeature(disabledFeatures, QStringLiteral("PasswordManagerEnableAccountStorageForNonSyncingUsers"));
+        appendUniqueFeature(disabledFeatures, QStringLiteral("PasswordManagerRedesign"));
+    }
+
+    if (!settings.enableTranslate) {
+        appendChromiumFlag(flags, QStringLiteral("--disable-translate"));
+        appendUniqueFeature(disabledFeatures, QStringLiteral("Translate"));
+    }
+
+    appendDisabledChromiumFeatures(flags, disabledFeatures);
     qputenv("QTWEBENGINE_CHROMIUM_FLAGS", flags.trimmed().toUtf8());
 }
 

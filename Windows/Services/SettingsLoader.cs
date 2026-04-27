@@ -51,6 +51,17 @@ public static class SettingsLoader
         ["devtools"] = "dev_tools",
         ["extensions_enabled"] = "extensions_enabled",
         ["extensions"] = "extensions_enabled",
+        ["enable_autofill"] = "enable_autofill",
+        ["autofill"] = "enable_autofill",
+        ["form_autofill"] = "enable_autofill",
+        ["enable_password_saving"] = "enable_password_saving",
+        ["password_saving"] = "enable_password_saving",
+        ["save_passwords"] = "enable_password_saving",
+        ["password_autosave"] = "enable_password_saving",
+        ["enable_translate"] = "enable_translate",
+        ["translate"] = "enable_translate",
+        ["translation"] = "enable_translate",
+        ["translations"] = "enable_translate",
         ["title_bar_height_px"] = "title_bar_height_px",
         ["titlebar_height"] = "title_bar_height_px",
         ["title_bar_button_height_px"] = "title_bar_button_height_px",
@@ -141,6 +152,9 @@ public static class SettingsLoader
         settings.ControlPassword = GetString(root, settings.ControlPassword, "control_password", "password", "use_password_to_change_maximize_minimize_close_toggle_kiosk");
         settings.DevTools = GetBool(root, settings.DevTools, "dev_tools", "devtools");
         settings.ExtensionsEnabled = GetBool(root, settings.ExtensionsEnabled, "extensions_enabled", "extensions");
+        settings.EnableAutofill = GetBool(root, settings.EnableAutofill, "enable_autofill", "autofill", "form_autofill");
+        settings.EnablePasswordSaving = GetBool(root, settings.EnablePasswordSaving, "enable_password_saving", "password_saving", "save_passwords", "password_autosave");
+        settings.EnableTranslate = GetBool(root, settings.EnableTranslate, "enable_translate", "translate", "translation", "translations");
         settings.TitleBarHeightPx = GetDouble(root, settings.TitleBarHeightPx, "title_bar_height_px", "titlebar_height");
         settings.TitleBarButtonHeightPx = GetDouble(root, settings.TitleBarButtonHeightPx, "title_bar_button_height_px", "titlebar_button_height");
         settings.TitleBarButtonWidthRatio = GetDouble(root, settings.TitleBarButtonWidthRatio, "title_bar_button_width_ratio", "titlebar_button_ratio");
@@ -212,6 +226,9 @@ public static class SettingsLoader
             case "control_password": settings.ControlPassword = value; break;
             case "dev_tools": settings.DevTools = ParseBool(value, key); break;
             case "extensions_enabled": settings.ExtensionsEnabled = ParseBool(value, key); break;
+            case "enable_autofill": settings.EnableAutofill = ParseBool(value, key); break;
+            case "enable_password_saving": settings.EnablePasswordSaving = ParseBool(value, key); break;
+            case "enable_translate": settings.EnableTranslate = ParseBool(value, key); break;
             case "title_bar_height_px": settings.TitleBarHeightPx = ParseDouble(value, key); break;
             case "title_bar_button_height_px": settings.TitleBarButtonHeightPx = ParseDouble(value, key); break;
             case "title_bar_button_width_ratio": settings.TitleBarButtonWidthRatio = ParseDouble(value, key); break;

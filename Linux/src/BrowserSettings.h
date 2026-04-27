@@ -22,6 +22,10 @@ struct BrowserSettings
     bool devTools = false;
     bool extensionsEnabled = false;
 
+    bool enableAutofill = true;
+    bool enablePasswordSaving = false;
+    bool enableTranslate = true;
+
     bool showAddressBar = false;
     bool allowTabs = false;
 

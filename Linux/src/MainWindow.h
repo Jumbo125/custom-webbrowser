@@ -74,6 +74,7 @@ private:
 
     QVariantMap ok(const QString& action) const;
     QVariantMap error(const QString& action, const QString& message) const;
+	QString browserControlScriptSource() const;
     QString bridgeScriptSource() const;
 
     BrowserSettings m_settings;

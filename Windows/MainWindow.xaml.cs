@@ -85,11 +85,26 @@ public partial class MainWindow : Window
 
         var options = new CoreWebView2EnvironmentOptions
         {
-            AreBrowserExtensionsEnabled = _settings.ExtensionsEnabled
+            AreBrowserExtensionsEnabled = _settings.ExtensionsEnabled,
+            AdditionalBrowserArguments = BuildBrowserArguments()
         };
 
         _environment = await CoreWebView2Environment.CreateAsync(null, userDataFolder, options);
         await CreateBrowserTabAsync(ResolveNavigationUri(_settings.Url), "Start");
+    }
+
+    private string BuildBrowserArguments()
+    {
+        var arguments = new List<string>();
+
+        if (!_settings.EnableTranslate)
+        {
+            // WebView2 exposes Autofill/Password as Settings properties, but currently no
+            // dedicated Translate setting. This Chromium feature flag is applied at environment startup.
+            arguments.Add("--disable-features=Translate,TranslateUI");
+        }
+
+        return string.Join(" ", arguments);
     }
 
     private async Task<WebView2> CreateBrowserTabAsync(Uri? source, string title = "Neuer Tab")
@@ -125,6 +140,8 @@ public partial class MainWindow : Window
         }
 
         core.Settings.AreDevToolsEnabled = _settings.DevTools;
+        core.Settings.IsGeneralAutofillEnabled = _settings.EnableAutofill;
+        core.Settings.IsPasswordAutosaveEnabled = _settings.EnablePasswordSaving;
         core.WebMessageReceived += Browser_WebMessageReceived;
         core.NewWindowRequested += async (_, e) => await HandleNewWindowRequestedAsync(browser, e);
         core.SourceChanged += (_, _) => Dispatcher.Invoke(UpdateNavigationUi);
