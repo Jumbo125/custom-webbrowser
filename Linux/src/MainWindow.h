@@ -43,10 +43,12 @@ protected:
 
 private:
     void setupUi();
+    void setupContentKioskBar(QVBoxLayout* rootLayout);
     void setupAddressBar(QVBoxLayout* rootLayout);
     void setupWebView();
     void configureWebView(QWebEngineView* view);
     void setupDevTools();
+    void applyWindowMode();
     void applyTitleBarSizing();
     void loadUrl();
 
@@ -72,6 +74,11 @@ private:
     void leaveKiosk();
     void updateMaximizeButtonText();
 
+    bool usesNativeTitleBar() const;
+    QString kioskButtonDisplayText() const;
+    void configureKioskButton(QPushButton* button);
+    void updateKioskButtonState();
+
     QVariantMap ok(const QString& action) const;
     QVariantMap error(const QString& action, const QString& message) const;
 	QString browserControlScriptSource() const;
@@ -90,6 +97,9 @@ private:
     QPushButton* m_minimizeButton = nullptr;
     QPushButton* m_maximizeButton = nullptr;
     QPushButton* m_closeButton = nullptr;
+
+    QWidget* m_contentKioskBar = nullptr;
+    QPushButton* m_contentKioskButton = nullptr;
 
     QWidget* m_addressBarContainer = nullptr;
     QToolButton* m_backButton = nullptr;

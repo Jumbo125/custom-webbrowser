@@ -55,6 +55,36 @@ public sealed class BrowserSettings
     [JsonPropertyName("enable_translate")]
     public bool EnableTranslate { get; set; } = true;
 
+    [JsonPropertyName("titlebar_style")]
+    public string TitlebarStyle { get; set; } = "custom";
+
+    [JsonPropertyName("show_kiosk_button_in_content")]
+    public bool ShowKioskButtonInContent { get; set; } = true;
+
+    [JsonPropertyName("kiosk_button_icon_type")]
+    public string KioskButtonIconType { get; set; } = "unicode";
+
+    [JsonPropertyName("kiosk_button_icon")]
+    public string KioskButtonIcon { get; set; } = "📌";
+
+    [JsonPropertyName("kiosk_button_text")]
+    public string KioskButtonText { get; set; } = "📌";
+
+    [JsonPropertyName("kiosk_button_tooltip")]
+    public string KioskButtonTooltip { get; set; } = "Kiosk-Modus umschalten";
+
+    [JsonPropertyName("custom_titlebar_background")]
+    public string CustomTitlebarBackground { get; set; } = "#111827";
+
+    [JsonPropertyName("custom_titlebar_foreground")]
+    public string CustomTitlebarForeground { get; set; } = "#FFFFFF";
+
+    [JsonPropertyName("content_kiosk_bar_background")]
+    public string ContentKioskBarBackground { get; set; } = "#F3F4F6";
+
+    [JsonPropertyName("content_kiosk_bar_foreground")]
+    public string ContentKioskBarForeground { get; set; } = "#111827";
+
     [JsonPropertyName("title_bar_height_px")]
     public double TitleBarHeightPx { get; set; } = 32;
 

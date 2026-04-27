@@ -1,8 +1,10 @@
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using CustomBrowser.Models;
@@ -14,6 +16,14 @@ namespace CustomBrowser;
 
 public partial class MainWindow : Window
 {
+    private const int GwlStyle = -16;
+    private const long WsMinimizeBox = 0x00020000L;
+    private const long WsMaximizeBox = 0x00010000L;
+    private const uint MfByCommand = 0x00000000;
+    private const uint MfEnabled = 0x00000000;
+    private const uint MfGrayed = 0x00000001;
+    private const uint ScClose = 0xF060;
+
     private readonly BrowserSettings _settings;
     private readonly string _configDirectory;
     private CoreWebView2Environment? _environment;
@@ -25,11 +35,15 @@ public partial class MainWindow : Window
 
     private WebView2? CurrentBrowser => BrowserTabs.SelectedItem is TabItem tab ? tab.Content as WebView2 : null;
 
+    private bool UseNativeTitlebar => IsNativeTitlebarStyle(_settings.TitlebarStyle);
+
     public MainWindow(BrowserSettings settings, string configDirectory)
     {
         InitializeComponent();
         _settings = settings;
         _configDirectory = configDirectory;
+        SourceInitialized += (_, _) => ApplyNativeWindowButtonStyle();
+        ApplyWindowFrameStyle();
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -55,7 +69,16 @@ public partial class MainWindow : Window
             WindowIcon.Source = Icon;
         }
 
-        KioskToggleButton.Visibility = _settings.EnableKioskModeToggle ? Visibility.Visible : Visibility.Collapsed;
+        ApplyConfiguredBrush(TitleBar, _settings.CustomTitlebarBackground);
+        ApplyConfiguredBrush(WindowTitle, _settings.CustomTitlebarForeground);
+        ApplyConfiguredBrush(ContentKioskBar, _settings.ContentKioskBarBackground);
+        ApplyConfiguredBrush(ContentKioskToggleButton, _settings.ContentKioskBarForeground);
+
+        ApplyKioskButtonContent(KioskToggleButton);
+        ApplyKioskButtonContent(ContentKioskToggleButton);
+        KioskToggleButton.ToolTip = _settings.KioskButtonTooltip;
+        ContentKioskToggleButton.ToolTip = _settings.KioskButtonTooltip;
+
         MinimizeButton.IsEnabled = _settings.EnableMinimize;
         MaximizeButton.IsEnabled = _settings.EnableMaximize;
         CloseButton.IsEnabled = _settings.EnableClose;
@@ -66,7 +89,8 @@ public partial class MainWindow : Window
             BrowserTabs.Template = (ControlTemplate)FindResource("BrowserOnlyTabControlTemplate");
         }
 
-        ApplyTitleBarSizing();
+        ApplyWindowFrameStyle();
+        ApplyTitleBarLayout();
         ApplyStartWindowSize(_settings.StartWindowSize);
         UpdateMaximizeButton();
         UpdateNavigationUi();
@@ -327,6 +351,57 @@ public partial class MainWindow : Window
         return Path.GetFullPath(Path.Combine(_configDirectory, path));
     }
 
+    private void ApplyWindowFrameStyle()
+    {
+        if (_isKiosk)
+        {
+            return;
+        }
+
+        if (UseNativeTitlebar)
+        {
+            WindowStyle = WindowStyle.SingleBorderWindow;
+            ResizeMode = _settings.EnableMaximize
+                ? ResizeMode.CanResize
+                : _settings.EnableMinimize ? ResizeMode.CanMinimize : ResizeMode.NoResize;
+            ApplyNativeWindowButtonStyle();
+            return;
+        }
+
+        WindowStyle = WindowStyle.None;
+        ResizeMode = ResizeMode.CanResizeWithGrip;
+    }
+
+    private void ApplyTitleBarLayout()
+    {
+        if (_isKiosk)
+        {
+            TitleBar.Visibility = Visibility.Collapsed;
+            TitleBarRow.Height = new GridLength(0);
+            ContentKioskBar.Visibility = Visibility.Collapsed;
+            ContentKioskRow.Height = new GridLength(0);
+            return;
+        }
+
+        if (UseNativeTitlebar)
+        {
+            TitleBar.Visibility = Visibility.Collapsed;
+            TitleBarRow.Height = new GridLength(0);
+            KioskToggleButton.Visibility = Visibility.Collapsed;
+
+            var showContentKioskButton = _settings.EnableKioskModeToggle && _settings.ShowKioskButtonInContent;
+            ContentKioskBar.Visibility = showContentKioskButton ? Visibility.Visible : Visibility.Collapsed;
+            ContentKioskRow.Height = showContentKioskButton ? GridLength.Auto : new GridLength(0);
+            return;
+        }
+
+        TitleBar.Visibility = Visibility.Visible;
+        ContentKioskBar.Visibility = Visibility.Collapsed;
+        ContentKioskRow.Height = new GridLength(0);
+        KioskToggleButton.Visibility = _settings.EnableKioskModeToggle ? Visibility.Visible : Visibility.Collapsed;
+        ApplyTitleBarSizing();
+    }
+
     private void ApplyTitleBarSizing()
     {
         var titleBarHeight = Math.Clamp(_settings.TitleBarHeightPx, 22, 96);
@@ -343,6 +418,136 @@ public partial class MainWindow : Window
         ApplyTitleButtonSize(MaximizeButton, buttonWidth, buttonHeight, gap);
         ApplyTitleButtonSize(CloseButton, buttonWidth, buttonHeight, gap);
     }
+
+    private void ApplyKioskButtonContent(Button button)
+    {
+        var iconType = (_settings.KioskButtonIconType ?? string.Empty).Trim().ToLowerInvariant();
+        var iconValue = string.IsNullOrWhiteSpace(_settings.KioskButtonIcon)
+            ? _settings.KioskButtonText
+            : _settings.KioskButtonIcon;
+
+        if (iconType is "image" or "png" or "ico")
+        {
+            var iconPath = ResolvePath(iconValue);
+            if (File.Exists(iconPath))
+            {
+                button.Content = new Image
+                {
+                    Source = new BitmapImage(new Uri(iconPath, UriKind.Absolute)),
+                    Width = 16,
+                    Height = 16,
+                    Stretch = Stretch.Uniform
+                };
+                return;
+            }
+        }
+
+        // WPF does not render SVG natively without an additional SVG library.
+        // For svg/theme/custom values we therefore fall back to text/unicode.
+        button.Content = string.IsNullOrWhiteSpace(iconValue) ? "📌" : iconValue;
+    }
+
+    private static bool IsNativeTitlebarStyle(string value)
+    {
+        var normalized = (value ?? string.Empty).Trim().ToLowerInvariant();
+        return normalized is "native" or "system" or "windows";
+    }
+
+    private static void ApplyConfiguredBrush(DependencyObject target, string colorValue)
+    {
+        if (string.IsNullOrWhiteSpace(colorValue))
+        {
+            return;
+        }
+
+        try
+        {
+            var brush = (Brush)new BrushConverter().ConvertFromString(colorValue)!;
+            switch (target)
+            {
+                case Border border:
+                    border.Background = brush;
+                    break;
+                case TextBlock textBlock:
+                    textBlock.Foreground = brush;
+                    break;
+                case Control control:
+                    control.Foreground = brush;
+                    break;
+            }
+        }
+        catch
+        {
+            // Invalid colors should not prevent the browser from starting.
+        }
+    }
+
+    private void ApplyNativeWindowButtonStyle()
+    {
+        if (!UseNativeTitlebar || !OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var style = GetWindowLongPtrSafe(hwnd, GwlStyle).ToInt64();
+        style = SetStyleFlag(style, WsMinimizeBox, _settings.EnableMinimize);
+        style = SetStyleFlag(style, WsMaximizeBox, _settings.EnableMaximize);
+        SetWindowLongPtrSafe(hwnd, GwlStyle, new IntPtr(style));
+
+        var systemMenu = GetSystemMenu(hwnd, false);
+        if (systemMenu != IntPtr.Zero)
+        {
+            EnableMenuItem(systemMenu, ScClose, MfByCommand | (_settings.EnableClose ? MfEnabled : MfGrayed));
+        }
+
+        DrawMenuBar(hwnd);
+    }
+
+    private static long SetStyleFlag(long style, long flag, bool enabled)
+    {
+        return enabled ? style | flag : style & ~flag;
+    }
+
+    private static IntPtr GetWindowLongPtrSafe(IntPtr hWnd, int nIndex)
+    {
+        return IntPtr.Size == 8
+            ? GetWindowLongPtr64(hWnd, nIndex)
+            : new IntPtr(GetWindowLong32(hWnd, nIndex));
+    }
+
+    private static IntPtr SetWindowLongPtrSafe(IntPtr hWnd, int nIndex, IntPtr dwNewLong)
+    {
+        return IntPtr.Size == 8
+            ? SetWindowLongPtr64(hWnd, nIndex, dwNewLong)
+            : new IntPtr(SetWindowLong32(hWnd, nIndex, dwNewLong.ToInt32()));
+    }
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr", SetLastError = true)]
+    private static extern IntPtr GetWindowLongPtr64(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr", SetLastError = true)]
+    private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLong", SetLastError = true)]
+    private static extern int GetWindowLong32(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLong", SetLastError = true)]
+    private static extern int SetWindowLong32(IntPtr hWnd, int nIndex, int dwNewLong);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern uint EnableMenuItem(IntPtr hMenu, uint uIDEnableItem, uint uEnable);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool DrawMenuBar(IntPtr hWnd);
 
     private static void ApplyTitleButtonSize(Button button, double width, double height, double leftGap)
     {
@@ -674,10 +879,13 @@ public partial class MainWindow : Window
 
     private void EnterKioskMode()
     {
-        _windowSnapshot = new WindowSnapshot(Left, Top, Width, Height, WindowState, Topmost, ResizeMode);
+        _windowSnapshot = new WindowSnapshot(Left, Top, Width, Height, WindowState, Topmost, ResizeMode, WindowStyle);
         _isKiosk = true;
         TitleBarRow.Height = new GridLength(0);
+        ContentKioskBar.Visibility = Visibility.Collapsed;
+        ContentKioskRow.Height = new GridLength(0);
         AddressBarContainer.Visibility = Visibility.Collapsed;
+        WindowStyle = WindowStyle.None;
         Topmost = true;
         ResizeMode = ResizeMode.NoResize;
         WindowState = WindowState.Maximized;
@@ -686,14 +894,14 @@ public partial class MainWindow : Window
     private void ExitKioskMode()
     {
         _isKiosk = false;
-        TitleBarRow.Height = new GridLength(_currentTitleBarHeight);
         AddressBarContainer.Visibility = _settings.ShowAddressBar ? Visibility.Visible : Visibility.Collapsed;
         Topmost = _windowSnapshot?.Topmost ?? false;
-        ResizeMode = _windowSnapshot?.ResizeMode ?? ResizeMode.CanResizeWithGrip;
 
         var snapshot = _windowSnapshot;
         if (snapshot is not null)
         {
+            WindowStyle = snapshot.WindowStyle;
+            ResizeMode = snapshot.ResizeMode;
             WindowState = WindowState.Normal;
             Left = snapshot.Left;
             Top = snapshot.Top;
@@ -701,6 +909,13 @@ public partial class MainWindow : Window
             Height = snapshot.Height;
             WindowState = snapshot.WindowState == WindowState.Minimized ? WindowState.Normal : snapshot.WindowState;
         }
+        else
+        {
+            ApplyWindowFrameStyle();
+        }
+
+        ApplyWindowFrameStyle();
+        ApplyTitleBarLayout();
     }
 
     private object GetState()
@@ -715,6 +930,9 @@ public partial class MainWindow : Window
             canClose = _settings.EnableClose,
             canMoveWindow = _settings.EnableMoveWindow,
             canToggleKiosk = _settings.EnableKioskModeToggle,
+            titlebarStyle = _settings.TitlebarStyle,
+            nativeTitlebar = UseNativeTitlebar,
+            kioskButtonInContent = UseNativeTitlebar && _settings.ShowKioskButtonInContent,
             passwordRequired = !string.IsNullOrEmpty(_settings.ControlPassword),
             showAddressBar = _settings.ShowAddressBar,
             allowTabs = _settings.AllowTabs,
@@ -783,5 +1001,5 @@ public partial class MainWindow : Window
 """;
     }
 
-    private sealed record WindowSnapshot(double Left, double Top, double Width, double Height, WindowState WindowState, bool Topmost, ResizeMode ResizeMode);
+    private sealed record WindowSnapshot(double Left, double Top, double Width, double Height, WindowState WindowState, bool Topmost, ResizeMode ResizeMode, WindowStyle WindowStyle);
 }

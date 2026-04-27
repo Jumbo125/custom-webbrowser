@@ -23,6 +23,7 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition x:Name="TitleBarRow" Height="36" />
+            <RowDefinition x:Name="ContentKioskRow" Height="0" />
             <RowDefinition x:Name="AddressBarRow" Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
@@ -80,8 +81,23 @@
             </Grid>
         </Border>
 
-        <Border x:Name="AddressBarContainer"
+        <Border x:Name="ContentKioskBar"
                 Grid.Row="1"
+                Padding="6,3"
+                Visibility="Collapsed">
+            <DockPanel LastChildFill="False">
+                <Button x:Name="ContentKioskToggleButton"
+                        DockPanel.Dock="Right"
+                        Width="34"
+                        Height="28"
+                        Content="📌"
+                        ToolTip="Kiosk-Modus umschalten"
+                        Click="KioskToggleButton_Click" />
+            </DockPanel>
+        </Border>
+
+        <Border x:Name="AddressBarContainer"
+                Grid.Row="2"
                 Background="#1f2937"
                 Padding="6,4">
             <Grid>
@@ -136,7 +152,7 @@
         </Border>
 
         <TabControl x:Name="BrowserTabs"
-                    Grid.Row="2"
+                    Grid.Row="3"
                     Background="#111827"
                     BorderThickness="0"
                     SelectionChanged="BrowserTabs_SelectionChanged" />

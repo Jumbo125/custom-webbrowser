@@ -26,6 +26,20 @@ struct BrowserSettings
     bool enablePasswordSaving = false;
     bool enableTranslate = true;
 
+    QString titlebarStyle = "native";
+    bool showKioskButtonInContent = true;
+    QString kioskButtonIconType = "unicode";
+    QString kioskButtonIcon = "📌";
+    QString kioskButtonText = "📌";
+    QString kioskButtonTooltip = "Kiosk-Modus umschalten";
+
+    QString customTitlebarBackground = "#202124";
+    QString customTitlebarForeground = "#ffffff";
+    QString customTitlebarButtonHover = "rgba(255, 255, 255, 0.16)";
+    QString customTitlebarCloseHover = "#d93025";
+    QString contentKioskBarBackground = "#f3f4f6";
+    QString contentKioskBarForeground = "#111827";
+
     bool showAddressBar = false;
     bool allowTabs = false;
 

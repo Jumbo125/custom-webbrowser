@@ -86,6 +86,26 @@ BrowserSettings SettingsLoader::load(const QString& iniPath)
     s.devTools = getBool(obj, "dev_tools", s.devTools);
     s.extensionsEnabled = getBool(obj, "extensions_enabled", s.extensionsEnabled);
 
+    s.titlebarStyle = getString(obj, "titlebar_style", s.titlebarStyle).trimmed().toLower();
+    if (obj.contains("use_native_titlebar")) {
+        s.titlebarStyle = getBool(obj, "use_native_titlebar", s.titlebarStyle == "native") ? QStringLiteral("native") : QStringLiteral("custom");
+    }
+    if (s.titlebarStyle.isEmpty()) {
+        s.titlebarStyle = QStringLiteral("native");
+    }
+    s.showKioskButtonInContent = getBool(obj, "show_kiosk_button_in_content", s.showKioskButtonInContent);
+    s.kioskButtonIconType = getString(obj, "kiosk_button_icon_type", s.kioskButtonIconType).trimmed().toLower();
+    s.kioskButtonIcon = getString(obj, "kiosk_button_icon", s.kioskButtonIcon);
+    s.kioskButtonText = getString(obj, "kiosk_button_text", s.kioskButtonText);
+    s.kioskButtonTooltip = getString(obj, "kiosk_button_tooltip", s.kioskButtonTooltip);
+
+    s.customTitlebarBackground = getString(obj, "custom_titlebar_background", s.customTitlebarBackground);
+    s.customTitlebarForeground = getString(obj, "custom_titlebar_foreground", s.customTitlebarForeground);
+    s.customTitlebarButtonHover = getString(obj, "custom_titlebar_button_hover", s.customTitlebarButtonHover);
+    s.customTitlebarCloseHover = getString(obj, "custom_titlebar_close_hover", s.customTitlebarCloseHover);
+    s.contentKioskBarBackground = getString(obj, "content_kiosk_bar_background", s.contentKioskBarBackground);
+    s.contentKioskBarForeground = getString(obj, "content_kiosk_bar_foreground", s.contentKioskBarForeground);
+
     s.showAddressBar = getBool(obj, "show_addressbar", s.showAddressBar);
     s.showAddressBar = getBool(obj, "show_adressbar", s.showAddressBar);
     s.showAddressBar = getBool(obj, "addressbar", s.showAddressBar);

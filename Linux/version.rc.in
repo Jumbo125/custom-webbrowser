@@ -1,0 +1,33 @@
+#include <windows.h>
+
+1 VERSIONINFO
+FILEVERSION @APP_VERSION_MAJOR@,@APP_VERSION_MINOR@,@APP_VERSION_PATCH@,@APP_VERSION_TWEAK@
+PRODUCTVERSION @APP_VERSION_MAJOR@,@APP_VERSION_MINOR@,@APP_VERSION_PATCH@,@APP_VERSION_TWEAK@
+FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+FILEFLAGS 0x1L
+#else
+FILEFLAGS 0x0L
+#endif
+FILEOS 0x00040004L
+FILETYPE 0x00000001L
+FILESUBTYPE 0x00000000L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "@APP_COMPANY@\0"
+            VALUE "FileDescription", "@APP_DESCRIPTION@\0"
+            VALUE "FileVersion", "@APP_VERSION@\0"
+            VALUE "InternalName", "@APP_INTERNAL_NAME@\0"
+            VALUE "OriginalFilename", "@APP_ORIGINAL_FILENAME@\0"
+            VALUE "ProductName", "@APP_PRODUCT_NAME@\0"
+            VALUE "ProductVersion", "@APP_VERSION@\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END

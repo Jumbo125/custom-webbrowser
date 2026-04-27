@@ -62,6 +62,26 @@ public static class SettingsLoader
         ["translate"] = "enable_translate",
         ["translation"] = "enable_translate",
         ["translations"] = "enable_translate",
+        ["titlebar_style"] = "titlebar_style",
+        ["title_bar_style"] = "titlebar_style",
+        ["use_native_titlebar"] = "use_native_titlebar",
+        ["native_titlebar"] = "use_native_titlebar",
+        ["show_kiosk_button_in_content"] = "show_kiosk_button_in_content",
+        ["content_kiosk_button"] = "show_kiosk_button_in_content",
+        ["kiosk_button_icon_type"] = "kiosk_button_icon_type",
+        ["kiosk_icon_type"] = "kiosk_button_icon_type",
+        ["kiosk_button_icon"] = "kiosk_button_icon",
+        ["kiosk_icon"] = "kiosk_button_icon",
+        ["kiosk_button_text"] = "kiosk_button_text",
+        ["kiosk_text"] = "kiosk_button_text",
+        ["kiosk_button_tooltip"] = "kiosk_button_tooltip",
+        ["kiosk_tooltip"] = "kiosk_button_tooltip",
+        ["custom_titlebar_background"] = "custom_titlebar_background",
+        ["titlebar_background"] = "custom_titlebar_background",
+        ["custom_titlebar_foreground"] = "custom_titlebar_foreground",
+        ["titlebar_foreground"] = "custom_titlebar_foreground",
+        ["content_kiosk_bar_background"] = "content_kiosk_bar_background",
+        ["content_kiosk_bar_foreground"] = "content_kiosk_bar_foreground",
         ["title_bar_height_px"] = "title_bar_height_px",
         ["titlebar_height"] = "title_bar_height_px",
         ["title_bar_button_height_px"] = "title_bar_button_height_px",
@@ -155,6 +175,20 @@ public static class SettingsLoader
         settings.EnableAutofill = GetBool(root, settings.EnableAutofill, "enable_autofill", "autofill", "form_autofill");
         settings.EnablePasswordSaving = GetBool(root, settings.EnablePasswordSaving, "enable_password_saving", "password_saving", "save_passwords", "password_autosave");
         settings.EnableTranslate = GetBool(root, settings.EnableTranslate, "enable_translate", "translate", "translation", "translations");
+        settings.TitlebarStyle = GetString(root, settings.TitlebarStyle, "titlebar_style", "title_bar_style");
+        if (TryGetBool(root, out var useNativeTitlebar, "use_native_titlebar", "native_titlebar"))
+        {
+            settings.TitlebarStyle = useNativeTitlebar ? "native" : "custom";
+        }
+        settings.ShowKioskButtonInContent = GetBool(root, settings.ShowKioskButtonInContent, "show_kiosk_button_in_content", "content_kiosk_button");
+        settings.KioskButtonIconType = GetString(root, settings.KioskButtonIconType, "kiosk_button_icon_type", "kiosk_icon_type");
+        settings.KioskButtonIcon = GetString(root, settings.KioskButtonIcon, "kiosk_button_icon", "kiosk_icon");
+        settings.KioskButtonText = GetString(root, settings.KioskButtonText, "kiosk_button_text", "kiosk_text");
+        settings.KioskButtonTooltip = GetString(root, settings.KioskButtonTooltip, "kiosk_button_tooltip", "kiosk_tooltip");
+        settings.CustomTitlebarBackground = GetString(root, settings.CustomTitlebarBackground, "custom_titlebar_background", "titlebar_background");
+        settings.CustomTitlebarForeground = GetString(root, settings.CustomTitlebarForeground, "custom_titlebar_foreground", "titlebar_foreground");
+        settings.ContentKioskBarBackground = GetString(root, settings.ContentKioskBarBackground, "content_kiosk_bar_background");
+        settings.ContentKioskBarForeground = GetString(root, settings.ContentKioskBarForeground, "content_kiosk_bar_foreground");
         settings.TitleBarHeightPx = GetDouble(root, settings.TitleBarHeightPx, "title_bar_height_px", "titlebar_height");
         settings.TitleBarButtonHeightPx = GetDouble(root, settings.TitleBarButtonHeightPx, "title_bar_button_height_px", "titlebar_button_height");
         settings.TitleBarButtonWidthRatio = GetDouble(root, settings.TitleBarButtonWidthRatio, "title_bar_button_width_ratio", "titlebar_button_ratio");
@@ -229,6 +263,17 @@ public static class SettingsLoader
             case "enable_autofill": settings.EnableAutofill = ParseBool(value, key); break;
             case "enable_password_saving": settings.EnablePasswordSaving = ParseBool(value, key); break;
             case "enable_translate": settings.EnableTranslate = ParseBool(value, key); break;
+            case "titlebar_style": settings.TitlebarStyle = value; break;
+            case "use_native_titlebar": settings.TitlebarStyle = ParseBool(value, key) ? "native" : "custom"; break;
+            case "show_kiosk_button_in_content": settings.ShowKioskButtonInContent = ParseBool(value, key); break;
+            case "kiosk_button_icon_type": settings.KioskButtonIconType = value; break;
+            case "kiosk_button_icon": settings.KioskButtonIcon = value; break;
+            case "kiosk_button_text": settings.KioskButtonText = value; break;
+            case "kiosk_button_tooltip": settings.KioskButtonTooltip = value; break;
+            case "custom_titlebar_background": settings.CustomTitlebarBackground = value; break;
+            case "custom_titlebar_foreground": settings.CustomTitlebarForeground = value; break;
+            case "content_kiosk_bar_background": settings.ContentKioskBarBackground = value; break;
+            case "content_kiosk_bar_foreground": settings.ContentKioskBarForeground = value; break;
             case "title_bar_height_px": settings.TitleBarHeightPx = ParseDouble(value, key); break;
             case "title_bar_button_height_px": settings.TitleBarButtonHeightPx = ParseDouble(value, key); break;
             case "title_bar_button_width_ratio": settings.TitleBarButtonWidthRatio = ParseDouble(value, key); break;
@@ -303,6 +348,31 @@ public static class SettingsLoader
         return fallback;
     }
 
+    private static bool TryGetBool(JsonObject root, out bool value, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (root.TryGetPropertyValue(name, out var node) && node is not null)
+            {
+                if (node.GetValueKind() == JsonValueKind.True)
+                {
+                    value = true;
+                    return true;
+                }
+                if (node.GetValueKind() == JsonValueKind.False)
+                {
+                    value = false;
+                    return true;
+                }
+                value = ParseBool(node.GetValue<string>(), name);
+                return true;
+            }
+        }
+
+        value = false;
+        return false;
+    }
+
     private static double GetDouble(JsonObject root, double fallback, params string[] names)
     {
         foreach (var name in names)
@@ -362,6 +432,18 @@ public static class SettingsLoader
         if (settings.Port < 0 || settings.Port > 65535)
         {
             throw new InvalidOperationException("port muss zwischen 0 und 65535 liegen. 0 deaktiviert den lokalen Server.");
+        }
+
+        var titlebarStyle = settings.TitlebarStyle.Trim().ToLowerInvariant();
+        if (titlebarStyle is not ("custom" or "native" or "system" or "windows"))
+        {
+            throw new InvalidOperationException("titlebar_style muss custom, native, system oder windows sein.");
+        }
+
+        var kioskIconType = settings.KioskButtonIconType.Trim().ToLowerInvariant();
+        if (kioskIconType is not ("text" or "ascii" or "unicode" or "image" or "png" or "ico" or "svg"))
+        {
+            throw new InvalidOperationException("kiosk_button_icon_type muss text, ascii, unicode, image, png, ico oder svg sein.");
         }
 
         if (settings.TitleBarHeightPx < 16 || settings.TitleBarHeightPx > 160)

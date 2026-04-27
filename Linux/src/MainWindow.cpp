@@ -34,7 +34,7 @@
 MainWindow::MainWindow(const BrowserSettings& settings, const QString& iniDir, QWidget* parent)
     : QMainWindow(parent), m_settings(settings), m_iniDir(iniDir)
 {
-    setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
+    applyWindowMode();
     setWindowTitle(m_settings.title);
 
     const QString iconFile = resolvePath(m_settings.iconPath);
@@ -89,7 +89,8 @@ void MainWindow::setupUi()
         return button;
     };
 
-    m_kioskButton = makeButton(QStringLiteral("⛶"), "KioskButton");
+    m_kioskButton = makeButton(kioskButtonDisplayText(), "KioskButton");
+    configureKioskButton(m_kioskButton);
     m_minimizeButton = makeButton(QStringLiteral("−"), "MinimizeButton");
     m_maximizeButton = makeButton(QStringLiteral("□"), "MaximizeButton");
     m_closeButton = makeButton(QStringLiteral("×"), "CloseButton");
@@ -150,19 +151,37 @@ void MainWindow::setupUi()
         updateNavigationButtons();
     });
 
+    m_titleBar->setVisible(!usesNativeTitleBar());
+
     rootLayout->addWidget(m_titleBar, 0);
+    setupContentKioskBar(rootLayout);
     setupAddressBar(rootLayout);
     rootLayout->addWidget(m_tabs, 1);
     setCentralWidget(m_root);
 
-    setStyleSheet(R"CSS(
+    setStyleSheet(QStringLiteral(R"CSS(
         QWidget#TitleBar {
-            background: #202124;
-            color: #ffffff;
+            background: %1;
+            color: %2;
         }
         QLabel#TitleLabel {
-            color: #ffffff;
+            color: %2;
             font-size: 12px;
+        }
+        QWidget#ContentKioskBar {
+            background: %5;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+        }
+        QPushButton#ContentKioskButton {
+            color: %6;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            padding: 2px 10px;
+            font-weight: 600;
+        }
+        QPushButton#ContentKioskButton:hover {
+            background: rgba(0, 0, 0, 0.08);
         }
         QWidget#AddressBar {
             background: #111827;
@@ -200,19 +219,56 @@ void MainWindow::setupUi()
         }
         QPushButton {
             border: none;
-            color: #ffffff;
+            color: %2;
             background: transparent;
             font-weight: 600;
         }
         QPushButton:hover {
-            background: rgba(255, 255, 255, 0.16);
+            background: %3;
         }
         QPushButton#CloseButton:hover {
-            background: #d93025;
+            background: %4;
         }
-    )CSS");
+    )CSS")
+        .arg(m_settings.customTitlebarBackground,
+             m_settings.customTitlebarForeground,
+             m_settings.customTitlebarButtonHover,
+             m_settings.customTitlebarCloseHover,
+             m_settings.contentKioskBarBackground,
+             m_settings.contentKioskBarForeground));
 
     applyTitleBarSizing();
+    updateKioskButtonState();
+}
+
+void MainWindow::setupContentKioskBar(QVBoxLayout* rootLayout)
+{
+    m_contentKioskBar = new QWidget(m_root);
+    m_contentKioskBar->setObjectName("ContentKioskBar");
+
+    auto* layout = new QHBoxLayout(m_contentKioskBar);
+    layout->setContentsMargins(6, 3, 6, 3);
+    layout->setSpacing(4);
+
+    layout->addStretch(1);
+
+    m_contentKioskButton = new QPushButton(kioskButtonDisplayText(), m_contentKioskBar);
+    m_contentKioskButton->setObjectName("ContentKioskButton");
+    m_contentKioskButton->setFocusPolicy(Qt::NoFocus);
+    m_contentKioskButton->setFlat(true);
+    configureKioskButton(m_contentKioskButton);
+    layout->addWidget(m_contentKioskButton, 0);
+
+    connect(m_contentKioskButton, &QPushButton::clicked, this, [this]() {
+        if (checkPasswordInteractive()) toggleKioskAction();
+    });
+
+    const bool visible = usesNativeTitleBar()
+        && m_settings.showKioskButtonInContent
+        && m_settings.enableKioskModeToggle;
+    m_contentKioskBar->setVisible(visible);
+
+    rootLayout->addWidget(m_contentKioskBar, 0);
 }
 
 void MainWindow::setupAddressBar(QVBoxLayout* rootLayout)
@@ -413,8 +469,32 @@ void MainWindow::setupDevTools()
     });
 }
 
+void MainWindow::applyWindowMode()
+{
+    if (!usesNativeTitleBar()) {
+        setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
+        return;
+    }
+
+    Qt::WindowFlags flags = Qt::Window | Qt::WindowTitleHint | Qt::WindowSystemMenuHint;
+
+    if (m_settings.enableMinimize) {
+        flags |= Qt::WindowMinimizeButtonHint;
+    }
+    if (m_settings.enableMaximize) {
+        flags |= Qt::WindowMaximizeButtonHint;
+    }
+    if (m_settings.enableClose) {
+        flags |= Qt::WindowCloseButtonHint;
+    }
+
+    setWindowFlags(flags);
+}
+
 void MainWindow::applyTitleBarSizing()
 {
+    if (!m_titleBar || !m_buttonLayout) return;
+
     const double titleBarHeight = qBound(22.0, m_settings.titleBarHeightPx, 80.0);
     const double buttonHeight = qBound(16.0, m_settings.titleBarButtonHeightPx, titleBarHeight);
     const double ratio = qBound(0.8, m_settings.titleBarButtonWidthRatio, 3.0);
@@ -427,10 +507,16 @@ void MainWindow::applyTitleBarSizing()
 
     const QList<QPushButton*> buttons { m_kioskButton, m_minimizeButton, m_maximizeButton, m_closeButton };
     for (QPushButton* button : buttons) {
+        if (!button) continue;
         button->setFixedSize(buttonWidth, qRound(buttonHeight));
         button->setMinimumWidth(buttonWidth);
         button->setMaximumWidth(buttonWidth);
         button->setFont(QFont(button->font().family(), qMax(9, qRound(buttonHeight * 0.48))));
+    }
+
+    if (m_contentKioskButton) {
+        m_contentKioskButton->setMinimumHeight(qMax(22, qRound(buttonHeight)));
+        m_contentKioskButton->setFont(QFont(m_contentKioskButton->font().family(), qMax(9, qRound(buttonHeight * 0.45))));
     }
 }
 
@@ -569,6 +655,7 @@ void MainWindow::toggleKioskAction()
     if (m_isKiosk) leaveKiosk();
     else enterKiosk();
     updateMaximizeButtonText();
+    updateKioskButtonState();
 }
 
 void MainWindow::closeAction()
@@ -584,6 +671,7 @@ void MainWindow::enterKiosk()
     m_wasMaximizedBeforeKiosk = isMaximized();
     m_isKiosk = true;
     showFullScreen();
+    updateKioskButtonState();
 }
 
 void MainWindow::leaveKiosk()
@@ -592,12 +680,84 @@ void MainWindow::leaveKiosk()
     m_isKiosk = false;
     if (m_wasMaximizedBeforeKiosk) showMaximized();
     else showNormal();
+    updateKioskButtonState();
 }
 
 void MainWindow::updateMaximizeButtonText()
 {
     if (!m_maximizeButton) return;
     m_maximizeButton->setText((isMaximized() || isFullScreen() || m_isKiosk) ? QStringLiteral("❐") : QStringLiteral("□"));
+}
+
+bool MainWindow::usesNativeTitleBar() const
+{
+    const QString style = m_settings.titlebarStyle.trimmed().toLower();
+    return style == QStringLiteral("native") || style == QStringLiteral("system") || style == QStringLiteral("os");
+}
+
+QString MainWindow::kioskButtonDisplayText() const
+{
+    if (!m_settings.kioskButtonText.trimmed().isEmpty()) {
+        return m_settings.kioskButtonText;
+    }
+
+    if (!m_settings.kioskButtonIcon.trimmed().isEmpty()) {
+        return m_settings.kioskButtonIcon;
+    }
+
+    return QStringLiteral("📌");
+}
+
+void MainWindow::configureKioskButton(QPushButton* button)
+{
+    if (!button) return;
+
+    button->setToolTip(m_settings.kioskButtonTooltip);
+    button->setAccessibleName(m_settings.kioskButtonTooltip);
+    button->setCheckable(true);
+    button->setIconSize(QSize(16, 16));
+
+    const QString type = m_settings.kioskButtonIconType.trimmed().toLower();
+    const QString value = m_settings.kioskButtonIcon.trimmed();
+
+    if (type == QStringLiteral("theme") && !value.isEmpty()) {
+        const QIcon themeIcon = QIcon::fromTheme(value);
+        if (!themeIcon.isNull()) {
+            button->setIcon(themeIcon);
+            button->setText(QString());
+            return;
+        }
+    }
+
+    if ((type == QStringLiteral("svg")
+        || type == QStringLiteral("image")
+        || type == QStringLiteral("png")
+        || type == QStringLiteral("ico")) && !value.isEmpty()) {
+        const QIcon fileIcon(resolvePath(value));
+        if (!fileIcon.isNull()) {
+            button->setIcon(fileIcon);
+            button->setText(QString());
+            return;
+        }
+    }
+
+    button->setIcon(QIcon());
+    button->setText(kioskButtonDisplayText());
+}
+
+void MainWindow::updateKioskButtonState()
+{
+    const QString suffix = m_isKiosk ? QStringLiteral(" aktiv") : QString();
+
+    if (m_kioskButton) {
+        m_kioskButton->setChecked(m_isKiosk);
+        m_kioskButton->setToolTip(m_settings.kioskButtonTooltip + suffix);
+    }
+
+    if (m_contentKioskButton) {
+        m_contentKioskButton->setChecked(m_isKiosk);
+        m_contentKioskButton->setToolTip(m_settings.kioskButtonTooltip + suffix);
+    }
 }
 
 QVariantMap MainWindow::ok(const QString& action) const
@@ -672,6 +832,9 @@ QVariantMap MainWindow::jsGetState() const
     result.insert(QStringLiteral("enableClose"), m_settings.enableClose);
     result.insert(QStringLiteral("enableMoveWindow"), m_settings.enableMoveWindow);
     result.insert(QStringLiteral("enableKioskModeToggle"), m_settings.enableKioskModeToggle);
+    result.insert(QStringLiteral("titlebarStyle"), m_settings.titlebarStyle);
+    result.insert(QStringLiteral("usesNativeTitleBar"), usesNativeTitleBar());
+    result.insert(QStringLiteral("showKioskButtonInContent"), m_settings.showKioskButtonInContent);
     result.insert(QStringLiteral("showAddressBar"), m_settings.showAddressBar);
     result.insert(QStringLiteral("allowTabs"), m_settings.allowTabs);
     result.insert(QStringLiteral("tabCount"), m_tabs ? m_tabs->count() : 1);
@@ -681,7 +844,7 @@ QVariantMap MainWindow::jsGetState() const
 bool MainWindow::eventFilter(QObject* watched, QEvent* event)
 {
     const bool isTitleObject = watched == m_titleBar || watched == m_titleLabel || watched == m_iconLabel;
-    if (!isTitleObject || !m_settings.enableMoveWindow || m_isKiosk || isFullScreen()) {
+    if (usesNativeTitleBar() || !isTitleObject || !m_settings.enableMoveWindow || m_isKiosk || isFullScreen()) {
         return QMainWindow::eventFilter(watched, event);
     }
 

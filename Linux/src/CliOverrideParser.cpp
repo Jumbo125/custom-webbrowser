@@ -80,6 +80,20 @@ void CliOverrideParser::apply(BrowserSettings& s, const QStringList& arguments)
     if (has("dev_tools")) s.devTools = toBool(val("dev_tools"), s.devTools);
     if (has("extensions_enabled")) s.extensionsEnabled = toBool(val("extensions_enabled"), s.extensionsEnabled);
 
+    if (has("titlebar_style")) s.titlebarStyle = val("titlebar_style").trimmed().toLower();
+    if (has("use_native_titlebar")) s.titlebarStyle = toBool(val("use_native_titlebar"), s.titlebarStyle == "native") ? QStringLiteral("native") : QStringLiteral("custom");
+    if (has("show_kiosk_button_in_content")) s.showKioskButtonInContent = toBool(val("show_kiosk_button_in_content"), s.showKioskButtonInContent);
+    if (has("kiosk_button_icon_type")) s.kioskButtonIconType = val("kiosk_button_icon_type").trimmed().toLower();
+    if (has("kiosk_button_icon")) s.kioskButtonIcon = val("kiosk_button_icon");
+    if (has("kiosk_button_text")) s.kioskButtonText = val("kiosk_button_text");
+    if (has("kiosk_button_tooltip")) s.kioskButtonTooltip = val("kiosk_button_tooltip");
+    if (has("custom_titlebar_background")) s.customTitlebarBackground = val("custom_titlebar_background");
+    if (has("custom_titlebar_foreground")) s.customTitlebarForeground = val("custom_titlebar_foreground");
+    if (has("custom_titlebar_button_hover")) s.customTitlebarButtonHover = val("custom_titlebar_button_hover");
+    if (has("custom_titlebar_close_hover")) s.customTitlebarCloseHover = val("custom_titlebar_close_hover");
+    if (has("content_kiosk_bar_background")) s.contentKioskBarBackground = val("content_kiosk_bar_background");
+    if (has("content_kiosk_bar_foreground")) s.contentKioskBarForeground = val("content_kiosk_bar_foreground");
+
     if (has("show_addressbar")) s.showAddressBar = toBool(val("show_addressbar"), s.showAddressBar);
     if (has("show_adressbar")) s.showAddressBar = toBool(val("show_adressbar"), s.showAddressBar);
     if (has("addressbar")) s.showAddressBar = toBool(val("addressbar"), s.showAddressBar);

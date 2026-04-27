@@ -1,6 +1,7 @@
 #include "CliOverrideParser.h"
 #include "MainWindow.h"
 #include "SettingsLoader.h"
+#include "version.h"
 
 #include <QApplication>
 #include <QCoreApplication>
@@ -110,7 +111,7 @@ int main(int argc, char* argv[])
 
     QApplication app(argc, argv);
     QCoreApplication::setApplicationName(settings.title);
-    QCoreApplication::setApplicationVersion(QStringLiteral("1.0.0"));
+    QCoreApplication::setApplicationVersion(QStringLiteral(APP_VERSION));
 
     MainWindow window(settings, QFileInfo(iniPath).absolutePath());
     window.applyInitialWindowState();
