@@ -16,8 +16,6 @@
   "enable_autofill": true,
   "enable_password_saving": false,
   "enable_translate": true,
-  "titlebar_style": "custom",
-  "show_titlebar": false,
   "show_addressbar": false,
   "allow_tabs": false,
   "title_bar_height_px": 32,
