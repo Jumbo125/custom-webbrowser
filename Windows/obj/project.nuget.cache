@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "422l2X/ndmk=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\AndreasRottmann\\Documents\\GitHub\\custom-webbrowser\\Windows\\CustomBrowser.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\AndreasRottmann\\.nuget\\packages\\microsoft.web.webview2\\1.0.4191.47\\microsoft.web.webview2.1.0.4191.47.nupkg.sha512",
+    "C:\\Users\\AndreasRottmann\\.nuget\\packages\\microsoft.windows.sdk.net.ref\\10.0.17763.56\\microsoft.windows.sdk.net.ref.10.0.17763.56.nupkg.sha512"
+  ],
+  "logs": []
+}

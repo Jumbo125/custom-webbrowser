@@ -8,7 +8,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets WebEngineWidgets WebChannel)
+find_package(Qt6 6.10 REQUIRED COMPONENTS Widgets WebEngineWidgets WebEngineCore WebChannel)
 
 set(APP_VERSION ${PROJECT_VERSION})
 set(APP_COMPANY "Custom Browser Qt")
@@ -40,6 +40,7 @@ target_include_directories(CustomBrowser PRIVATE ${CMAKE_BINARY_DIR})
 target_link_libraries(CustomBrowser PRIVATE
     Qt6::Widgets
     Qt6::WebEngineWidgets
+    Qt6::WebEngineCore
     Qt6::WebChannel
 )
 

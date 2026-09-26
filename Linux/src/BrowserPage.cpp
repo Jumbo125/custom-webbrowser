@@ -1,7 +1,8 @@
 #include "BrowserPage.h"
+#include <QWebEngineProfile>
 
-BrowserPage::BrowserPage(QObject* parent)
-    : QWebEnginePage(parent)
+BrowserPage::BrowserPage(QWebEngineProfile* profile, QObject* parent)
+    : QWebEnginePage(profile, parent)
 {
 }
 

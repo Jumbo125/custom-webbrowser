@@ -6,8 +6,10 @@
 #include <QCloseEvent>
 #include <QDateTime>
 #include <QDebug>
+#include <QDialog>
 #include <QDir>
 #include <QFile>
+#include <QFileDialog>
 #include <QFileInfo>
 #include <QFont>
 #include <QHBoxLayout>
@@ -19,6 +21,8 @@
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListWidget>
+#include <QMessageBox>
 #include <QMouseEvent>
 #include <QMoveEvent>
 #include <QProcess>
@@ -34,8 +38,11 @@
 #include <QUrl>
 #include <QVBoxLayout>
 #include <QWebChannel>
+#include <QWebEngineExtensionInfo>
+#include <QWebEngineExtensionManager>
 #include <QWebEngineHistory>
 #include <QWebEnginePage>
+#include <QWebEngineProfile>
 #include <QWebEngineScript>
 #include <QWebEngineScriptCollection>
 #include <QWebEngineSettings>
@@ -68,6 +75,11 @@ MainWindow::MainWindow(const BrowserSettings& settings, const QString& iniDir, Q
     const QString iconFile = resolvePath(m_settings.iconPath);
     if (QFileInfo::exists(iconFile)) {
         setWindowIcon(QIcon(iconFile));
+    }
+
+    m_profile = QWebEngineProfile::defaultProfile();
+    if (m_settings.extensionsEnabled) {
+        setupExtensions();
     }
 
     setupUi();
@@ -319,6 +331,9 @@ void MainWindow::setupAddressBar(QVBoxLayout* rootLayout)
     m_backButton = makeToolButton(QStringLiteral("‹"));
     m_forwardButton = makeToolButton(QStringLiteral("›"));
     m_reloadButton = makeToolButton(QStringLiteral("⟳"));
+    if (m_settings.extensionsEnabled) {
+        m_extensionsButton = makeToolButton(QStringLiteral("EXT"));
+    }
 
     m_addressEdit = new QLineEdit(m_addressBarContainer);
     m_addressEdit->setObjectName("AddressEdit");
@@ -328,6 +343,9 @@ void MainWindow::setupAddressBar(QVBoxLayout* rootLayout)
     layout->addWidget(m_backButton);
     layout->addWidget(m_forwardButton);
     layout->addWidget(m_reloadButton);
+    if (m_extensionsButton) {
+        layout->addWidget(m_extensionsButton);
+    }
     layout->addWidget(m_addressEdit, 1);
 
     connect(m_backButton, &QToolButton::clicked, this, [this]() {
@@ -339,6 +357,11 @@ void MainWindow::setupAddressBar(QVBoxLayout* rootLayout)
     connect(m_reloadButton, &QToolButton::clicked, this, [this]() {
         if (auto* view = currentWebView()) view->reload();
     });
+    if (m_extensionsButton) {
+        connect(m_extensionsButton, &QToolButton::clicked, this, [this]() {
+            showExtensionManager();
+        });
+    }
     connect(m_addressEdit, &QLineEdit::returnPressed, this, [this]() {
         if (auto* view = currentWebView()) {
             const QString text = m_addressEdit->text().trimmed();
@@ -350,6 +373,292 @@ void MainWindow::setupAddressBar(QVBoxLayout* rootLayout)
 
     m_addressBarContainer->setVisible(m_settings.showAddressBar);
     rootLayout->addWidget(m_addressBarContainer, 0);
+}
+
+void MainWindow::setupExtensions()
+{
+    if (!m_settings.extensionsEnabled || !m_profile) {
+        return;
+    }
+
+    auto* manager = m_profile->extensionManager();
+    if (!manager) {
+        qWarning() << "Extension manager is not available";
+        return;
+    }
+
+    auto enableInstalledExtension = [manager](const QWebEngineExtensionInfo& extension) {
+        if (!extension.error().isEmpty()) {
+            qWarning() << "Extension error:" << extension.error();
+            return;
+        }
+
+        // Qt loads installed extensions disabled after every application start.
+        // CustomBrowser enables installed extensions automatically.
+        if (extension.isInstalled() && extension.isLoaded() && !extension.isEnabled()) {
+            manager->setExtensionEnabled(extension, true);
+        }
+    };
+
+    connect(manager, &QWebEngineExtensionManager::loadFinished,
+            this, enableInstalledExtension);
+    connect(manager, &QWebEngineExtensionManager::installFinished,
+            this, enableInstalledExtension);
+
+    // Some installed extensions may already be known when the window is created.
+    QTimer::singleShot(0, this, [manager]() {
+        const auto extensions = manager->extensions();
+        for (const QWebEngineExtensionInfo& extension : extensions) {
+            if (extension.isInstalled() && extension.isLoaded() && !extension.isEnabled()) {
+                manager->setExtensionEnabled(extension, true);
+            }
+        }
+    });
+
+    // Works even when the address bar is hidden.
+    auto* extensionShortcut = new QShortcut(
+        QKeySequence(QStringLiteral("Ctrl+Shift+E")), this);
+    connect(extensionShortcut, &QShortcut::activated,
+            this, &MainWindow::showExtensionManager);
+}
+
+void MainWindow::showExtensionManager()
+{
+    if (!m_settings.extensionsEnabled || !m_profile) {
+        QMessageBox::information(
+            this,
+            QStringLiteral("Erweiterungen"),
+            QStringLiteral("Erweiterungen sind in ini.json deaktiviert."));
+        return;
+    }
+
+    auto* manager = m_profile->extensionManager();
+    if (!manager) {
+        QMessageBox::warning(
+            this,
+            QStringLiteral("Erweiterungen"),
+            QStringLiteral("Der Qt-WebEngine-Extension-Manager ist nicht verfügbar."));
+        return;
+    }
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(QStringLiteral("Browser-Erweiterungen"));
+    dialog.resize(720, 430);
+
+    auto* rootLayout = new QVBoxLayout(&dialog);
+    auto* hintLabel = new QLabel(
+        QStringLiteral("Qt WebEngine unterstützt hier Manifest-V3-Erweiterungen. "
+                       "Installiert werden können ZIP-Dateien oder entpackte Ordner."),
+        &dialog);
+    hintLabel->setWordWrap(true);
+    rootLayout->addWidget(hintLabel);
+
+    auto* list = new QListWidget(&dialog);
+    rootLayout->addWidget(list, 1);
+
+    auto* buttonLayout = new QHBoxLayout();
+    auto* installZipButton = new QPushButton(QStringLiteral("ZIP installieren"), &dialog);
+    auto* installFolderButton = new QPushButton(QStringLiteral("Ordner installieren"), &dialog);
+    auto* toggleButton = new QPushButton(QStringLiteral("Aktivieren"), &dialog);
+    auto* popupButton = new QPushButton(QStringLiteral("Popup öffnen"), &dialog);
+    auto* uninstallButton = new QPushButton(QStringLiteral("Deinstallieren"), &dialog);
+    auto* closeButton = new QPushButton(QStringLiteral("Schließen"), &dialog);
+
+    buttonLayout->addWidget(installZipButton);
+    buttonLayout->addWidget(installFolderButton);
+    buttonLayout->addStretch(1);
+    buttonLayout->addWidget(toggleButton);
+    buttonLayout->addWidget(popupButton);
+    buttonLayout->addWidget(uninstallButton);
+    buttonLayout->addWidget(closeButton);
+    rootLayout->addLayout(buttonLayout);
+
+    auto selectedId = [list]() -> QString {
+        QListWidgetItem* item = list->currentItem();
+        return item ? item->data(Qt::UserRole).toString() : QString();
+    };
+
+    auto updateButtons = [&]() {
+        const QString id = selectedId();
+        bool found = false;
+
+        const auto extensions = manager->extensions();
+        for (const QWebEngineExtensionInfo& extension : extensions) {
+            if (extension.id() != id) {
+                continue;
+            }
+
+            found = true;
+            toggleButton->setEnabled(extension.isLoaded());
+            toggleButton->setText(
+                extension.isEnabled()
+                    ? QStringLiteral("Deaktivieren")
+                    : QStringLiteral("Aktivieren"));
+            popupButton->setEnabled(
+                extension.isEnabled() && extension.actionPopupUrl().isValid());
+            uninstallButton->setEnabled(extension.isInstalled());
+            break;
+        }
+
+        if (!found) {
+            toggleButton->setEnabled(false);
+            popupButton->setEnabled(false);
+            uninstallButton->setEnabled(false);
+        }
+    };
+
+    auto refresh = [&]() {
+        const QString previousId = selectedId();
+        list->clear();
+
+        const auto extensions = manager->extensions();
+        int rowToSelect = -1;
+
+        for (const QWebEngineExtensionInfo& extension : extensions) {
+            QString name = extension.name().trimmed();
+            if (name.isEmpty()) {
+                name = extension.id().isEmpty()
+                    ? QStringLiteral("Unbekannte Erweiterung")
+                    : extension.id();
+            }
+
+            const QString state = extension.isEnabled()
+                ? QStringLiteral("aktiv")
+                : QStringLiteral("deaktiviert");
+            const QString source = extension.isInstalled()
+                ? QStringLiteral("installiert")
+                : QStringLiteral("intern/geladen");
+
+            auto* item = new QListWidgetItem(
+                QStringLiteral("%1  —  %2, %3").arg(name, state, source),
+                list);
+            item->setData(Qt::UserRole, extension.id());
+            item->setToolTip(
+                QStringLiteral("%1\n%2")
+                    .arg(extension.description(), extension.path()));
+
+            if (!previousId.isEmpty() && extension.id() == previousId) {
+                rowToSelect = list->count() - 1;
+            }
+        }
+
+        if (list->count() > 0) {
+            list->setCurrentRow(rowToSelect >= 0 ? rowToSelect : 0);
+        }
+        updateButtons();
+    };
+
+    connect(list, &QListWidget::currentRowChanged, &dialog,
+            [&](int) { updateButtons(); });
+
+    connect(installZipButton, &QPushButton::clicked, &dialog, [&]() {
+        const QString path = QFileDialog::getOpenFileName(
+            &dialog,
+            QStringLiteral("Erweiterung installieren"),
+            QString(),
+            QStringLiteral("Browser-Erweiterung (*.zip);;Alle Dateien (*)"));
+        if (!path.isEmpty()) {
+            manager->installExtension(path);
+        }
+    });
+
+    connect(installFolderButton, &QPushButton::clicked, &dialog, [&]() {
+        const QString path = QFileDialog::getExistingDirectory(
+            &dialog,
+            QStringLiteral("Entpackte Erweiterung auswählen"));
+        if (!path.isEmpty()) {
+            manager->installExtension(path);
+        }
+    });
+
+    connect(toggleButton, &QPushButton::clicked, &dialog, [&]() {
+        const QString id = selectedId();
+        const auto extensions = manager->extensions();
+        for (const QWebEngineExtensionInfo& extension : extensions) {
+            if (extension.id() == id) {
+                manager->setExtensionEnabled(extension, !extension.isEnabled());
+                break;
+            }
+        }
+        refresh();
+    });
+
+    connect(popupButton, &QPushButton::clicked, &dialog, [&]() {
+        const QString id = selectedId();
+        const auto extensions = manager->extensions();
+        for (const QWebEngineExtensionInfo& extension : extensions) {
+            if (extension.id() != id || !extension.actionPopupUrl().isValid()) {
+                continue;
+            }
+
+            auto* popup = new QWebEngineView();
+            popup->setAttribute(Qt::WA_DeleteOnClose);
+            popup->setWindowTitle(extension.name());
+            popup->resize(480, 640);
+            popup->setPage(new QWebEnginePage(m_profile, popup));
+            popup->setUrl(extension.actionPopupUrl());
+            popup->show();
+            break;
+        }
+    });
+
+    connect(uninstallButton, &QPushButton::clicked, &dialog, [&]() {
+        const QString id = selectedId();
+        const auto extensions = manager->extensions();
+        for (const QWebEngineExtensionInfo& extension : extensions) {
+            if (extension.id() != id || !extension.isInstalled()) {
+                continue;
+            }
+
+            const auto answer = QMessageBox::question(
+                &dialog,
+                QStringLiteral("Erweiterung deinstallieren"),
+                QStringLiteral("„%1“ wirklich deinstallieren?")
+                    .arg(extension.name()));
+            if (answer == QMessageBox::Yes) {
+                manager->uninstallExtension(extension);
+            }
+            break;
+        }
+    });
+
+    connect(closeButton, &QPushButton::clicked,
+            &dialog, &QDialog::accept);
+
+    connect(manager, &QWebEngineExtensionManager::installFinished,
+            &dialog, [&](const QWebEngineExtensionInfo& extension) {
+        if (!extension.error().isEmpty()) {
+            QMessageBox::warning(
+                &dialog,
+                QStringLiteral("Installation fehlgeschlagen"),
+                extension.error());
+        } else {
+            manager->setExtensionEnabled(extension, true);
+        }
+        refresh();
+    });
+
+    connect(manager, &QWebEngineExtensionManager::loadFinished,
+            &dialog, [&](const QWebEngineExtensionInfo&) {
+        refresh();
+    });
+    connect(manager, &QWebEngineExtensionManager::unloadFinished,
+            &dialog, [&](const QWebEngineExtensionInfo&) {
+        refresh();
+    });
+    connect(manager, &QWebEngineExtensionManager::uninstallFinished,
+            &dialog, [&](const QWebEngineExtensionInfo& extension) {
+        if (!extension.error().isEmpty()) {
+            QMessageBox::warning(
+                &dialog,
+                QStringLiteral("Deinstallation fehlgeschlagen"),
+                extension.error());
+        }
+        refresh();
+    });
+
+    refresh();
+    dialog.exec();
 }
 
 void MainWindow::setupWebView()
@@ -417,7 +726,7 @@ void MainWindow::configureWebView(QWebEngineView* view)
 QWebEngineView* MainWindow::createBrowserTab(const QUrl& url)
 {
     auto* view = new QWebEngineView(m_tabs);
-    auto* page = new BrowserPage(view);
+    auto* page = new BrowserPage(m_profile, view);
 
     page->createNewWindowPage = [this](QWebEnginePage::WebWindowType type) -> QWebEnginePage* {
         Q_UNUSED(type)

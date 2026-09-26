@@ -15,6 +15,7 @@ class QHBoxLayout;
 class QVBoxLayout;
 class QWebChannel;
 class QWebEngineView;
+class QWebEngineProfile;
 class QCloseEvent;
 class QShowEvent;
 class QMoveEvent;
@@ -53,6 +54,8 @@ private:
     void setupAddressBar(QVBoxLayout* rootLayout);
     void setupWebView();
     void configureWebView(QWebEngineView* view);
+    void setupExtensions();
+    void showExtensionManager();
     void setupDevTools();
     void applyWindowMode();
     void applyTitleBarSizing();
@@ -116,11 +119,13 @@ private:
     QToolButton* m_backButton = nullptr;
     QToolButton* m_forwardButton = nullptr;
     QToolButton* m_reloadButton = nullptr;
+    QToolButton* m_extensionsButton = nullptr;
     QLineEdit* m_addressEdit = nullptr;
 
     QTabWidget* m_tabs = nullptr;
     QWebEngineView* m_view = nullptr;
     QWebEngineView* m_devToolsView = nullptr;
+    QWebEngineProfile* m_profile = nullptr;
     BrowserBridge* m_bridge = nullptr;
 
     bool m_dragging = false;
